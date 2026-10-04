@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Casa</string>
+    <string name="title_activity_main">Casa</string>
+    <string name="package_name">com.hogar.finanzas</string>
+    <string name="custom_url_scheme">com.hogar.finanzas</string>
+</resources>
