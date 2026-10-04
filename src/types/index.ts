@@ -1,4 +1,5 @@
 export type OperationType = 'income' | 'expense' | 'transfer'
+export type RecurrentFrequency = 'weekly' | 'monthly' | 'yearly'
 
 export interface Source {
   id: string
@@ -29,6 +30,25 @@ export interface Operation {
   description?: string
   created_by: string
 }
+
+export interface RecurrentOperation {
+  id: string
+  user_id: string
+  type: OperationType
+  /** Always positive; the operation type determines its effect on balances. */
+  amount: number
+  source_id: string
+  destination_source_id?: string
+  category_id: string
+  subcategory_id?: string
+  description: string
+  frequency: RecurrentFrequency
+  day_of_month: number
+  next_run_date: string
+  is_active: boolean
+}
+
+export type RecurrentOperationDraft = Omit<RecurrentOperation, 'id'>
 
 export interface UserSettings {
   user_id: string

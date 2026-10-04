@@ -1,13 +1,26 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { AppView, Operation, OperationDraft, OperationType, Source, UserSettings } from '../../types'
+import type {
+  AppView,
+  Operation,
+  OperationDraft,
+  OperationType,
+  RecurrentOperation,
+  RecurrentOperationDraft,
+  Source,
+  UserSettings,
+} from '../../types'
 import {
   add_operation as persistOperation,
+  add_recurrent_operation as persistRecurrentOperation,
+  delete_recurrent_operation as removeRecurrentOperation,
   get_operations,
+  get_recurrent_operations,
   get_sources,
   get_user_settings,
   isSupabaseConfigured,
   save_user_settings,
   supabase,
+  toggle_recurrent_operation as persistRecurrentStatus,
 } from '../../services/supabase'
 
 const DEMO_SOURCES: Source[] = [
@@ -21,13 +34,16 @@ type AppContextValue = {
   selectedType: OperationType
   sources: Source[]
   operations: Operation[]
+  recurrentOperations: RecurrentOperation[]
   settings: UserSettings
   userId: string | null
   userEmail: string | null
   authLoading: boolean
   navigate: (view: AppView) => void
   startOperation: (type: OperationType) => void
-  submitOperation: (draft: OperationDraft) => Promise<void>
+  submitOperation: (draft: OperationDraft, recurrentDraft?: RecurrentOperationDraft) => Promise<void>
+  toggleRecurrentOperation: (id: string, isActive: boolean) => Promise<void>
+  deleteRecurrentOperation: (id: string) => Promise<void>
   updateDefaultSource: (sourceId: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -53,6 +69,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedType, setSelectedType] = useState<OperationType>('expense')
   const [sources, setSources] = useState<Source[]>(DEMO_SOURCES)
   const [operations, setOperations] = useState<Operation[]>([])
+  const [recurrentOperations, setRecurrentOperations] = useState<RecurrentOperation[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -65,11 +82,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (data.session?.user) {
           setUserId(data.session.user.id)
           setUserEmail(data.session.user.email ?? null)
-          const [remoteSources, remoteOperations, remoteSettings] = await Promise.all([
-            get_sources(), get_operations(), get_user_settings(),
+          const [remoteSources, remoteOperations, remoteRecurrentOperations, remoteSettings] = await Promise.all([
+            get_sources(), get_operations(), get_recurrent_operations(), get_user_settings(),
           ])
           setSources(remoteSources)
           setOperations(remoteOperations)
+          setRecurrentOperations(remoteRecurrentOperations)
           if (remoteSettings) setSettings(remoteSettings)
         }
       } else {
@@ -102,11 +120,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!data.user) throw new Error('No se pudo iniciar sesión.')
       setUserId(data.user.id)
       setUserEmail(data.user.email ?? normalizedEmail)
-      const [remoteSources, remoteOperations, remoteSettings] = await Promise.all([
-        get_sources(), get_operations(), get_user_settings(),
+      const [remoteSources, remoteOperations, remoteRecurrentOperations, remoteSettings] = await Promise.all([
+        get_sources(), get_operations(), get_recurrent_operations(), get_user_settings(),
       ])
       setSources(remoteSources)
       setOperations(remoteOperations)
+      setRecurrentOperations(remoteRecurrentOperations)
       setSettings(remoteSettings ?? { user_id: data.user.id, default_source_id: remoteSources[0]?.id ?? '' })
     } else {
       localStorage.setItem('household-demo-session', normalizedEmail)
@@ -121,16 +140,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('household-demo-session')
     setUserId(null)
     setUserEmail(null)
+    setRecurrentOperations([])
     setView('selector')
   }
 
-  const submitOperation = async (draft: OperationDraft) => {
+  const submitOperation = async (draft: OperationDraft, recurrentDraft?: RecurrentOperationDraft) => {
     const operation = isSupabaseConfigured
       ? await persistOperation(draft)
       : { ...draft, id: crypto.randomUUID(), creation_date: new Date().toISOString() }
+    const recurrentOperation = recurrentDraft
+      ? isSupabaseConfigured
+        ? await persistRecurrentOperation(recurrentDraft)
+        : { ...recurrentDraft, id: crypto.randomUUID() }
+      : null
+
     setOperations((current) => [operation, ...current])
+    if (recurrentOperation) setRecurrentOperations((current) => [...current, recurrentOperation])
     setSources((current) => applyBalance(current, draft))
     setView('dashboard')
+  }
+
+  const toggleRecurrentOperation = async (id: string, isActive: boolean) => {
+    if (isSupabaseConfigured) await persistRecurrentStatus(id, isActive)
+    setRecurrentOperations((current) => current.map((item) => (
+      item.id === id ? { ...item, is_active: isActive } : item
+    )))
+  }
+
+  const deleteRecurrentOperation = async (id: string) => {
+    if (isSupabaseConfigured) await removeRecurrentOperation(id)
+    setRecurrentOperations((current) => current.filter((item) => item.id !== id))
   }
 
   const updateDefaultSource = async (sourceId: string) => {
@@ -140,9 +179,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo(() => ({
-    view, selectedType, sources, operations, settings, userId, userEmail, authLoading,
-    navigate: setView, startOperation, submitOperation, updateDefaultSource, login, logout,
-  }), [view, selectedType, sources, operations, settings, userId, userEmail, authLoading])
+    view, selectedType, sources, operations, recurrentOperations, settings, userId, userEmail, authLoading,
+    navigate: setView, startOperation, submitOperation, toggleRecurrentOperation,
+    deleteRecurrentOperation, updateDefaultSource, login, logout,
+  }), [view, selectedType, sources, operations, recurrentOperations, settings, userId, userEmail, authLoading])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

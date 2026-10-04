@@ -23,17 +23,38 @@ export function LoginView() {
       <div className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-moss blur-3xl" />
       <div className="relative w-full max-w-sm">
         <div className="mb-10">
-          <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><Home size={23} /></div>
-          <p className="mb-2 text-sm font-semibold text-emerald-200">FINANZAS EN CASA</p>
-          <h1 className="font-display text-4xl font-extrabold tracking-tight">Lo vuestro,<br />bien organizado.</h1>
+          {/* <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><Home size={23} /></div> */}
+          <h1 className="font-display text-4xl font-extrabold tracking-tight">REGISTRO DE GASTOS</h1>
         </div>
         <form onSubmit={submit} className="rounded-[2rem] bg-paper p-6 text-ink shadow-2xl">
           <div className="mb-5 flex items-center gap-2 text-sm font-semibold"><LockKeyhole size={17} /> Acceso privado</div>
+
           <label className="label" htmlFor="email">Correo</label>
-          <input className="field mb-4" id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" />
+          <input 
+            className="field mb-4"
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@correo.com"
+          />
+
           <label className="label" htmlFor="password">Contraseña</label>
-          <input className="field" id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          <input 
+            className="field"
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+
           {error && <p className="mt-3 text-sm font-medium text-coral">{error}</p>}
+          
           <button disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-4 font-bold text-white transition hover:bg-moss disabled:opacity-60">
             {busy ? <LoaderCircle className="animate-spin" size={20} /> : <>Entrar <ArrowRight size={19} /></>}
           </button>

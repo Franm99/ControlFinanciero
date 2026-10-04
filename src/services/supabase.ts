@@ -1,5 +1,13 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Operation, OperationDraft, OperationFilters, Source, UserSettings } from '../types'
+import type {
+  Operation,
+  OperationDraft,
+  OperationFilters,
+  RecurrentOperation,
+  RecurrentOperationDraft,
+  Source,
+  UserSettings,
+} from '../types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -62,6 +70,46 @@ export async function combine_operations(
   })
   if (error) throw error
   return data as Operation
+}
+
+export async function add_recurrent_operation(
+  operation: RecurrentOperationDraft,
+): Promise<RecurrentOperation> {
+  const { data, error } = await client()
+    .from('recurrent_operations')
+    .insert(operation)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as RecurrentOperation
+}
+
+export async function get_recurrent_operations(): Promise<RecurrentOperation[]> {
+  const { data, error } = await client()
+    .from('recurrent_operations')
+    .select('*')
+    .order('next_run_date')
+  if (error) throw error
+  return data as RecurrentOperation[]
+}
+
+export async function toggle_recurrent_operation(
+  id: string,
+  isActive: boolean,
+): Promise<RecurrentOperation> {
+  const { data, error } = await client()
+    .from('recurrent_operations')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as RecurrentOperation
+}
+
+export async function delete_recurrent_operation(id: string): Promise<void> {
+  const { error } = await client().from('recurrent_operations').delete().eq('id', id)
+  if (error) throw error
 }
 
 export async function get_user_settings(): Promise<UserSettings | null> {
