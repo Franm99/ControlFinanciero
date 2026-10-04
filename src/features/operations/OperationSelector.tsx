@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Home, MoveRight, ArrowRightLeft, Plus, Minus } from 'lucide-react'
+import { ArrowDownLeft, Home, ArrowRightLeft, Plus, Minus } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import type { OperationType } from '../../types'
 
@@ -9,8 +9,8 @@ const ACTIONS: { type: OperationType; title: string; hint: string; icon: typeof 
 ]
 
 export function OperationSelector() {
-  const { startOperation, navigate, userEmail } = useApp()
-  const firstName = userEmail?.split('@')[0] ?? 'casa'
+  const { startOperation, navigate, userEmail, userName } = useApp()
+  const firstName = userName ?? userEmail?.split('@')[0] ?? 'casa'
 
   return (
     <main className="safe-top min-h-screen bg-paper px-5 pb-28">

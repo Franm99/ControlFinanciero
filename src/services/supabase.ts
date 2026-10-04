@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
+  AppUser,
   Operation,
   OperationDraft,
   OperationFilters,
@@ -18,6 +19,12 @@ export const isSupabaseConfigured = Boolean(supabase)
 function client(): SupabaseClient {
   if (!supabase) throw new Error('Supabase no está configurado. Añade las variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.')
   return supabase
+}
+
+export async function get_users(): Promise<AppUser[]> {
+  const { data, error } = await client().from('profiles').select('id, email, name').order('name')
+  if (error) throw error
+  return data as AppUser[]
 }
 
 export async function get_sources(): Promise<Source[]> {

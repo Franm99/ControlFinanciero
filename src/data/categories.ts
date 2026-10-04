@@ -1,10 +1,18 @@
 import type { Category } from '../types'
 
+const expense = (name: string) => ({ id: name, name, type: 'expense' as const })
+const income = (name: string) => ({ id: name, name, type: 'income' as const })
+const both = (name: string) => ({ id: name, name, type: 'both' as const })
+
 export const CATEGORIES: Category[] = [
-  { id: 'comun', name: 'COMÚN', subcategories: ['nómina', 'comida', 'alquiler', 'suscripciones', 'internet', 'luz', 'ayuda', 'educación', 'mascotas', 'hogar'] },
-  { id: 'transporte', name: 'TRANSPORTE', subcategories: ['gasolina', 'transporte público', 'avión'] },
-  { id: 'actividades', name: 'ACTIVIDADES', subcategories: ['gimnasio', 'cerámica', 'yoga', 'baloncesto'] },
-  { id: 'ocio', name: 'OCIO', subcategories: ['hostelería', 'viajes', 'jolgorio', 'actividades de grupo', 'celebraciones'] },
-  { id: 'extra', name: 'EXTRA', subcategories: ['regalos', 'bizum', 'proyectos', 'peluquería', 'ropa', 'salud', 'coche', 'reparaciones'] },
+  {
+    id: 'comun',
+    name: 'COMÚN',
+    subcategories: [income('nómina'), expense('comida'), expense('alquiler'), expense('suscripciones'), expense('internet'), expense('luz'), both('ayuda'), expense('educación'), expense('mascotas'), expense('hogar')],
+  },
+  { id: 'transporte', name: 'TRANSPORTE', subcategories: [expense('gasolina'), expense('transporte público'), expense('avión')] },
+  { id: 'actividades', name: 'ACTIVIDADES', subcategories: [expense('gimnasio'), expense('cerámica'), expense('yoga'), expense('baloncesto')] },
+  { id: 'ocio', name: 'OCIO', subcategories: [expense('hostelería'), expense('viajes'), expense('jolgorio'), expense('actividades de grupo'), expense('celebraciones')] },
+  { id: 'extra', name: 'EXTRA', subcategories: [both('regalos'), both('bizum'), both('proyectos'), expense('peluquería'), expense('ropa'), expense('salud'), expense('coche'), expense('reparaciones')] },
   { id: 'desconocido', name: 'DESCONOCIDO', subcategories: [] },
 ]

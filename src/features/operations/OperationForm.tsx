@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, LoaderCircle } from 'lucide-react'
 import { CATEGORIES } from '../../data/categories'
 import { useApp } from '../../hooks/useApp'
-import type { OperationDraft, RecurrentFrequency } from '../../types'
+import { supportsOperationType, type OperationDraft, type RecurrentFrequency } from '../../types'
 
 const TITLES = { income: 'Nuevo ingreso', expense: 'Nuevo gasto', transfer: 'Nuevo movimiento' }
 const ACCENTS = { income: 'bg-[#2f6b4f]', expense: 'bg-[#c84f45]', transfer: 'bg-[#4868a8]' }
@@ -30,15 +30,17 @@ function nextRunDate(startDate: string, frequency: RecurrentFrequency, dayOfMont
 }
 
 export function OperationForm() {
-  const { selectedType: type, sources, settings, userId, userEmail, navigate, submitOperation } = useApp()
+  const { selectedType: type, sources, settings, users, userId, userEmail, navigate, submitOperation } = useApp()
   const [amount, setAmount] = useState('')
   const [sourceId, setSourceId] = useState(settings.default_source_id || sources[0]?.id || '')
   const [destinationId, setDestinationId] = useState('')
-  const [categoryId, setCategoryId] = useState('desconocido')
-  const [subcategoryId, setSubcategoryId] = useState('')
+  const [categoryId, setCategoryId] = useState(type === 'expense' ? 'comun' : 'desconocido')
+  const [subcategoryId, setSubcategoryId] = useState(type === 'expense' ? 'comida' : '')
   const [date, setDate] = useState(today())
   const [description, setDescription] = useState('')
-  const [responsible, setResponsible] = useState(userId ?? '')
+  const [responsible, setResponsible] = useState(
+    users.find((user) => user.id === userId || user.email === userEmail)?.id ?? users[0]?.id ?? '',
+  )
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState<RecurrentFrequency>('monthly')
   const [dayOfMonth, setDayOfMonth] = useState(new Date().getDate())
@@ -46,6 +48,10 @@ export function OperationForm() {
   const [error, setError] = useState('')
 
   const category = useMemo(() => CATEGORIES.find((item) => item.id === categoryId), [categoryId])
+  const subcategories = useMemo(
+    () => category?.subcategories.filter((subcategory) => supportsOperationType(subcategory, type)) ?? [],
+    [category, type],
+  )
   const selectedSource = sources.find((source) => source.id === sourceId)
   const isShared = selectedSource?.owner === ''
 
@@ -129,10 +135,10 @@ export function OperationForm() {
           </div>}
 
           <div><label className="label" htmlFor="category">Categoría</label><select id="category" className="field" disabled={type === 'transfer'} value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}>{CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-          <div><label className="label" htmlFor="subcategory">Subcategoría</label><select id="subcategory" className="field" disabled={type === 'transfer' || !category?.subcategories.length} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)}><option value="">Sin subcategoría</option>{category?.subcategories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+          <div><label className="label" htmlFor="subcategory">Subcategoría</label><select id="subcategory" className="field" disabled={type === 'transfer' || !subcategories.length} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)}><option value="">Sin subcategoría</option>{subcategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
 
           <div><label className="label" htmlFor="date">Fecha</label><div className="relative"><CalendarDays className="pointer-events-none absolute left-4 top-3.5 text-black/35" size={19} /><input id="date" type="date" className="field pl-11" required value={date} onChange={(e) => setDate(e.target.value)} /></div></div>
-          {isShared && <div><label className="label" htmlFor="responsible">Responsable</label><input id="responsible" className="field" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder={userEmail ?? 'Usuario'} /></div>}
+          {isShared && <div><label className="label" htmlFor="responsible">Responsable</label><select id="responsible" className="field" required value={responsible} onChange={(e) => setResponsible(e.target.value)}>{users.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}</select></div>}
           <div className="sm:col-span-2"><label className="label" htmlFor="description">Descripción <span className="normal-case tracking-normal text-black/30">(opcional)</span></label><input id="description" className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Añade una nota rápida" /></div>
         </div>
 

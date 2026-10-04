@@ -10,10 +10,29 @@ export interface Source {
   owner: string
 }
 
+export type FinancialOperationType = Exclude<OperationType, 'transfer'>
+export type SubcategoryType = FinancialOperationType | 'both'
+
+export interface Subcategory {
+  id: string
+  name: string
+  type: SubcategoryType
+}
+
 export interface Category {
   id: string
   name: string
-  subcategories: string[]
+  subcategories: Subcategory[]
+}
+
+export interface AppUser {
+  id: string
+  email: string
+  name: string
+}
+
+export function supportsOperationType(subcategory: Subcategory, type: OperationType): boolean {
+  return type !== 'transfer' && (subcategory.type === type || subcategory.type === 'both')
 }
 
 export interface Operation {

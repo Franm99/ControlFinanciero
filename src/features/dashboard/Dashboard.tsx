@@ -3,9 +3,11 @@ import { BarChart3, Plus, Settings, WalletCards } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CATEGORIES } from '../../data/categories'
 import { useApp } from '../../hooks/useApp'
+import { supportsOperationType } from '../../types'
 
 const COLORS = ['#2f6b4f', '#89aa8d', '#d5a85c', '#5376a6', '#bd6c61', '#8c789d']
 const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
+const compactNumber = new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 })
 
 export function Dashboard() {
   const { sources, operations, navigate } = useApp()
@@ -24,6 +26,18 @@ export function Dashboard() {
     })
   }, [filtered])
   const categories = CATEGORIES.map((category) => ({ name: category.name.slice(0, 5), value: filtered.filter((item) => item.type === 'expense' && item.category_id === category.id).reduce((sum, item) => sum + item.amount, 0) })).filter((item) => item.value > 0)
+  const subcategories = useMemo(() => CATEGORIES.flatMap((category, categoryIndex) => (
+    category.subcategories
+      .filter((subcategory) => supportsOperationType(subcategory, 'expense'))
+      .map((subcategory) => ({
+        name: subcategory.name,
+        category: category.name,
+        color: COLORS[categoryIndex % COLORS.length],
+        value: filtered
+          .filter((operation) => operation.type === 'expense' && operation.category_id === category.id && operation.subcategory_id === subcategory.id)
+          .reduce((sum, operation) => sum + operation.amount, 0),
+      }))
+  )).filter((subcategory) => subcategory.value > 0), [filtered])
 
   return (
     <main className="safe-top min-h-screen bg-paper px-5 pb-32">
@@ -43,6 +57,32 @@ export function Dashboard() {
           </div>
 
           <div className="card p-5 lg:col-span-2"><h2 className="font-display text-lg font-extrabold">Gastos por categoría</h2><p className="mb-3 text-xs text-black/40">Según el filtro actual</p><div className="h-64">{categories.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={categories} layout="vertical"><XAxis type="number" hide /><YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={48} fontSize={10} /><Tooltip formatter={(value) => money.format(Number(value))} /><Bar dataKey="value" fill="#d5a85c" radius={[0, 7, 7, 0]} /></BarChart></ResponsiveContainer> : <div className="flex h-full items-center justify-center text-center text-sm text-black/35">Aún no hay gastos<br />para mostrar</div>}</div></div>
+        </section>
+
+        <section className="card mt-5 p-5">
+          <h2 className="font-display text-lg font-extrabold">Gastos por subcategoría</h2>
+          <p className="mb-4 text-xs text-black/40">Subcategorías de gasto según el filtro actual</p>
+          {subcategories.length ? <>
+            <div style={{ height: Math.max(260, subcategories.length * 42) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={subcategories} layout="vertical" margin={{ top: 8, right: 20, left: 4, bottom: 8 }}>
+                  <CartesianGrid horizontal={false} stroke="#e9e9e2" />
+                  <XAxis type="number" axisLine={false} tickLine={false} fontSize={10} tickFormatter={(value) => `${compactNumber.format(value)} €`} />
+                  <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={130} fontSize={11} />
+                  <Tooltip formatter={(value) => money.format(Number(value))} cursor={{ fill: '#f7f7f2' }} />
+                  <Bar dataKey="value" name="Gastos" barSize={22} radius={[0, 7, 7, 0]}>
+                    {subcategories.map((subcategory) => <Cell key={`${subcategory.category}-${subcategory.name}`} fill={subcategory.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/[0.06] pt-4">
+              {CATEGORIES.filter((category) => subcategories.some((subcategory) => subcategory.category === category.name)).map((category) => {
+                const categoryIndex = CATEGORIES.findIndex((item) => item.id === category.id)
+                return <div key={category.id} className="flex items-center gap-2 text-xs font-semibold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[categoryIndex % COLORS.length] }} />{category.name}</div>
+              })}
+            </div>
+          </> : <div className="flex h-48 items-center justify-center text-center text-sm text-black/35">Aún no hay gastos por subcategoría<br />para mostrar</div>}
         </section>
       </div>
 
