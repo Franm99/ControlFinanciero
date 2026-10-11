@@ -21,6 +21,12 @@ function client(): SupabaseClient {
   return supabase
 }
 
+function integerId(value: string, fieldName: string): number {
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed)) throw new Error(`${fieldName} no es un identificador numérico válido.`)
+  return parsed
+}
+
 export async function get_users(): Promise<AppUser[]> {
   const { data, error } = await client().from('profiles').select('id, email, name').order('name')
   if (error) throw error
@@ -48,9 +54,31 @@ export async function get_operations(filters: OperationFilters = {}): Promise<Op
 
 /** Balance changes are performed atomically by the corresponding database RPC. */
 export async function add_operation(operation: OperationDraft): Promise<Operation> {
-  const { data, error } = await client().rpc('add_operation', { operation_data: operation })
-  if (error) throw error
-  return data as Operation
+  const supabaseClient = client()
+  const operationData = {
+    p_type: operation.type,
+    p_amount: operation.amount,
+    p_source_id: integerId(operation.source_id, 'La cuenta de origen'),
+    p_destination_source_id: operation.destination_source_id
+      ? integerId(operation.destination_source_id, 'La cuenta de destino')
+      : null,
+    p_category_id: operation.category_id,
+    p_subcategory_id: operation.subcategory_id ?? null,
+    p_date: operation.date.slice(0, 10),
+    p_description: operation.description ?? null,
+    p_created_by: operation.created_by,
+  }
+  const { data: operationId, error: rpcError } = await supabaseClient.rpc('add_operation', operationData)
+  if (rpcError) throw rpcError
+  if (typeof operationId !== 'number') throw new Error('La operación no devolvió un identificador válido.')
+
+  const { data: insertedOperation, error: readError } = await supabaseClient
+    .from('operations')
+    .select('*')
+    .eq('id', operationId)
+    .single()
+  if (readError) throw readError
+  return insertedOperation as Operation
 }
 
 export async function update_operation(id: string, operation: Partial<OperationDraft>): Promise<Operation> {
