@@ -10,12 +10,51 @@ const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR
 const compactNumber = new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 })
 
 export function Dashboard() {
-  const { sources, operations, navigate } = useApp()
+  const { sources, operations, navigate, userId } = useApp()
   const [sourceFilter, setSourceFilter] = useState('all')
-  const total = sources.reduce((sum, source) => sum + source.balance, 0)
-  const pieData = sources.filter((source) => source.balance > 0).map((source) => ({ name: source.name, value: source.balance }))
 
-  const filtered = useMemo(() => operations.filter((operation) => sourceFilter === 'all' || operation.source_id === sourceFilter || operation.destination_source_id === sourceFilter), [operations, sourceFilter])
+  const allowed_sources = useMemo(
+    () => sources.filter((source) => source.owner === userId || source.owner == null),
+    [sources, userId],
+  )
+  const common_sources = useMemo(
+    () => sources.filter((source) => source.owner == null),
+    [sources],
+  )
+  const personal_sources = useMemo(
+    () => sources.filter((source) => source.owner === userId),
+    [sources, userId],
+  )
+
+  const total_common = common_sources.reduce((sum, source) => sum + source.balance, 0)
+  const pieData_common = common_sources.filter((source) => source.balance > 0).map((source) => ({ name: source.name, value: source.balance }))
+
+  const total_personal = personal_sources.reduce((sum, source) => sum + source.balance, 0)
+  const pieData_personal = personal_sources.filter((source) => source.balance > 0).map((source) => ({ name: source.name, value: source.balance }))
+
+  const balanceSections = [
+    { title: 'Cuentas comunes', total: total_common, sources: common_sources, pieData: pieData_common },
+    { title: 'Cuentas personales', total: total_personal, sources: personal_sources, pieData: pieData_personal },
+  ]
+
+  const filtered = useMemo(() => {
+    const selectedSources = sourceFilter === 'common'
+      ? common_sources
+      : sourceFilter === 'personal'
+        ? personal_sources
+        : sourceFilter === 'all'
+          ? allowed_sources
+          : null
+    const selectedSourceIds = new Set(
+      selectedSources?.map((source) => String(source.id)) ?? [sourceFilter],
+    )
+
+    return operations.filter((operation) => (
+      selectedSourceIds.has(String(operation.source_id))
+      || (operation.destination_source_id != null
+        && selectedSourceIds.has(String(operation.destination_source_id)))
+    ))
+  }, [allowed_sources, common_sources, operations, personal_sources, sourceFilter])
   const monthly = useMemo(() => {
     const formatter = new Intl.DateTimeFormat('es-ES', { month: 'short' })
     return Array.from({ length: 6 }, (_, index) => {
@@ -25,7 +64,7 @@ export function Dashboard() {
       return { month: formatter.format(date).replace('.', ''), Ingresos: inMonth.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0), Gastos: inMonth.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0) }
     })
   }, [filtered])
-  const categories = CATEGORIES.map((category) => ({ name: category.name.slice(0, 5), value: filtered.filter((item) => item.type === 'expense' && item.category_id === category.id).reduce((sum, item) => sum + item.amount, 0) })).filter((item) => item.value > 0)
+  const categories = CATEGORIES.map((category) => ({ name: category.name.slice(0, 5), value: filtered.filter((item) => item.type === 'expense' && item.category === category.id).reduce((sum, item) => sum + item.amount, 0) })).filter((item) => item.value > 0)
   const subcategories = useMemo(() => CATEGORIES.flatMap((category, categoryIndex) => (
     category.subcategories
       .filter((subcategory) => supportsOperationType(subcategory, 'expense'))
@@ -34,7 +73,7 @@ export function Dashboard() {
         category: category.name,
         color: COLORS[categoryIndex % COLORS.length],
         value: filtered
-          .filter((operation) => operation.type === 'expense' && operation.category_id === category.id && operation.subcategory_id === subcategory.id)
+          .filter((operation) => operation.type === 'expense' && operation.category === category.id && operation.subcategory === subcategory.id)
           .reduce((sum, operation) => sum + operation.amount, 0),
       }))
   )).filter((subcategory) => subcategory.value > 0), [filtered])
@@ -44,15 +83,40 @@ export function Dashboard() {
       <div className="mx-auto max-w-4xl">
         <header className="flex items-center justify-between pb-7 pt-2"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-moss">Panel general</p><h1 className="font-display text-3xl font-extrabold">Vuestra casa</h1></div><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sage text-moss"><BarChart3 size={22} /></div></header>
 
-        <section className="card overflow-hidden p-6 md:grid md:grid-cols-2 md:items-center">
-          <div><div className="mb-4 flex items-center gap-2 text-sm font-semibold text-black/50"><WalletCards size={18} /> Total disponible</div><p className="font-display text-4xl font-extrabold tracking-tight md:text-5xl">{money.format(total)}</p><p className="mt-2 text-sm text-black/45">En {sources.length} fuentes de dinero</p></div>
-          <div className="mt-5 h-48 md:mt-0"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={pieData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={3}>{pieData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip formatter={(value) => money.format(Number(value))} /></PieChart></ResponsiveContainer></div>
-          <div className="flex flex-wrap gap-x-4 gap-y-2 md:col-span-2">{pieData.map((item, index) => <div key={item.name} className="flex items-center gap-2 text-xs font-semibold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[index % COLORS.length] }} />{item.name}</div>)}</div>
+        <section className="card grid grid-cols-2 divide-x divide-black/[0.06] overflow-hidden">
+          {balanceSections.map(({ title, total, sources: sectionSources, pieData }) => (
+            <div key={title} className="min-w-0 px-3 py-5 sm:p-6">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-black/50 sm:text-sm"><WalletCards className="shrink-0" size={18} /> {title}</div>
+              <p className="break-words font-display text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">{money.format(total)}</p>
+              <p className="mt-2 text-xs text-black/45 sm:text-sm">En {sectionSources.length} fuentes de dinero</p>
+              <div className="mt-3 h-36 sm:h-44"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={pieData} dataKey="value" nameKey="name" innerRadius="48%" outerRadius="72%" paddingAngle={3}>{pieData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip formatter={(value) => money.format(Number(value))} /></PieChart></ResponsiveContainer></div>
+              <div className="flex flex-wrap gap-x-3 gap-y-2">{pieData.map((item, index) => <div key={item.name} className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold sm:text-xs"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLORS[index % COLORS.length] }} /><span className="break-words">{item.name}</span></div>)}</div>
+            </div>
+          ))}
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-5">
           <div className="card p-5 lg:col-span-3">
-            <div className="mb-5 flex items-start justify-between gap-3"><div><h2 className="font-display text-lg font-extrabold">Ingresos vs. gastos</h2><p className="text-xs text-black/40">Últimos 6 meses</p></div><select aria-label="Filtrar por fuente" className="rounded-xl border border-black/10 bg-paper px-3 py-2 text-xs font-semibold outline-none" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}><option value="all">Todas</option>{sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select></div>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-extrabold">Ingresos vs. gastos</h2>
+                <p className="text-xs text-black/40">Últimos 6 meses</p>
+              </div>
+              <select 
+                aria-label="Filtrar por fuente" 
+                className="rounded-xl border border-black/10 bg-paper px-3 py-2 text-xs font-semibold outline-none" 
+                value={sourceFilter} 
+                onChange={(e) => setSourceFilter(e.target.value)}
+              >
+                <option value="all">Todas las cuentas</option>
+                <option value="common">Cuentas comunes</option>
+                <option value="personal">Cuentas personales</option>
+                {allowed_sources
+                  .map((source) => 
+                <option key={source.id} value={source.id}>{source.name}</option>)
+                }
+              </select>
+              </div>
             <div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={monthly} barGap={2}><CartesianGrid vertical={false} stroke="#e9e9e2" /><XAxis dataKey="month" axisLine={false} tickLine={false} fontSize={11} /><YAxis hide /><Tooltip formatter={(value) => money.format(Number(value))} cursor={{ fill: '#f7f7f2' }} /><Bar dataKey="Ingresos" fill="#4c8969" radius={[5, 5, 0, 0]} /><Bar dataKey="Gastos" fill="#db6c60" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div>
           </div>
 

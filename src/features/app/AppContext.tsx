@@ -61,12 +61,18 @@ type AppContextValue = {
 export const AppContext = createContext<AppContextValue | null>(null)
 
 function applyBalance(sources: Source[], operation: OperationDraft): Source[] {
+  const sourceId = String(operation.source_id)
+  const destinationSourceId = operation.destination_source_id == null
+    ? null
+    : String(operation.destination_source_id)
+
   return sources.map((source) => {
-    if (source.id === operation.source_id) {
+    const currentSourceId = String(source.id)
+    if (currentSourceId === sourceId) {
       const delta = operation.type === 'income' ? operation.amount : -operation.amount
       return { ...source, balance: source.balance + delta }
     }
-    if (operation.type === 'transfer' && source.id === operation.destination_source_id) {
+    if (operation.type === 'transfer' && currentSourceId === destinationSourceId) {
       return { ...source, balance: source.balance + operation.amount }
     }
     return source
