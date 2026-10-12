@@ -104,7 +104,11 @@ export async function combine_operations(
     new_operation_data: newOperationData,
   })
   if (error) throw error
-  return data as Operation | null
+
+  // PostgreSQL composite return values can represent `return null` as an
+  // object whose every field is null. Normalize both forms for the app.
+  if (!data || typeof data !== 'object' || !('id' in data) || data.id == null) return null
+  return data as Operation
 }
 
 export async function add_recurrent_operation(

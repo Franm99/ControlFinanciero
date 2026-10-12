@@ -258,7 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : draft ? { ...draft, id: crypto.randomUUID(), creation_date: new Date().toISOString() } : null
     const selectedIds = new Set(ids.map(String))
     setOperations((items) => [
-      ...(combined ? [combined] : []),
+      ...(draft && combined ? [combined] : []),
       ...items.filter((item) => !selectedIds.has(String(item.id))),
     ])
     setSources((items) => {
