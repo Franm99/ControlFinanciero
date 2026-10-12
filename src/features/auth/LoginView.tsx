@@ -19,12 +19,11 @@ export function LoginView() {
   }
 
   return (
-    <main className="safe-top flex min-h-screen items-center justify-center overflow-hidden bg-ink px-5 py-10 text-white">
-      <div className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-moss blur-3xl" />
+    <main className="safe-top flex min-h-screen items-center justify-center overflow-hidden bg-moss px-5 py-10 text-white">
       <div className="relative w-full max-w-sm">
         <div className="mb-10">
           {/* <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><Home size={23} /></div> */}
-          <h1 className="font-display text-4xl font-extrabold tracking-tight">REGISTRO DE GASTOS</h1>
+          <h1 className="whitespace-nowrap text-center font-display text-3xl font-extrabold tracking-tight sm:text-left sm:text-4xl">REGISTRO DE GASTOS</h1>
         </div>
         <form onSubmit={submit} className="rounded-[2rem] bg-paper p-6 text-ink shadow-2xl">
           <div className="mb-5 flex items-center gap-2 text-sm font-semibold"><LockKeyhole size={17} /> Acceso privado</div>
