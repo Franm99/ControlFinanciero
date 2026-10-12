@@ -150,15 +150,37 @@ export function OperationForm() {
         <div className="grid gap-5 sm:grid-cols-2">
           <div className={type === 'transfer' ? '' : 'sm:col-span-2'}>
             <label className="label" htmlFor="source">{type === 'transfer' ? 'Cuenta origen' : 'Cuenta'}</label>
-            <select id="source" className="field" required value={sourceId} onChange={(e) => setSourceId(e.target.value)}>{sources.map((source) => <option key={source.id} value={idValue(source.id)}>{source.name} · {source.balance.toLocaleString('es-ES')} €</option>)}</select>
+            <select 
+              id="source" 
+              className="field" 
+              required 
+              value={sourceId} 
+              onChange={(e) => setSourceId(e.target.value)}
+            >
+              {sources
+                .filter((source) => source.owner === userId || source.owner == null)
+                .map((source) => (
+                  <option key={source.id} value={idValue(source.id)}>
+                    {source.name} · {source.balance.toLocaleString('es-ES')} €
+                  </option>
+                ))}
+            </select>
           </div>
           {type === 'transfer' && 
           <div>
             <label className="label" htmlFor="destination">Cuenta destino</label>
-            <select id="destination" className="field" required value={destinationId} onChange={(e) => setDestinationId(e.target.value)}>
-              <option value="">Seleccionar…</option>
-              {sources.filter((source) => idValue(source.id) !== sourceId).map((source) => 
-              <option key={source.id} value={idValue(source.id)}>{source.name}</option>)}
+            <select 
+              id="destination" 
+              className="field" 
+              required 
+              value={destinationId} 
+              onChange={(e) => setDestinationId(e.target.value)}>
+              {sources
+                .map((source) => (
+                  <option key={source.id} value={idValue(source.id)}>
+                    {source.name} · {source.balance.toLocaleString('es-ES')} €
+                  </option>
+                ))}
             </select>
           </div>}
 
@@ -166,7 +188,7 @@ export function OperationForm() {
           <div><label className="label" htmlFor="subcategory">Subcategoría</label><select id="subcategory" className="field" disabled={type === 'transfer' || !subcategories.length} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)}><option value="">Sin subcategoría</option>{subcategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
 
           <div><label className="label" htmlFor="date">Fecha</label><div className="relative"><CalendarDays className="pointer-events-none absolute left-4 top-3.5 text-black/35" size={19} /><input id="date" type="date" className="field pl-11" required value={date} onChange={(e) => setDate(e.target.value)} /></div></div>
-          {isShared && <div><label className="label" htmlFor="responsible">Responsable</label><select id="responsible" className="field" required value={responsible} onChange={(e) => setResponsible(e.target.value)}><option value="" disabled>Seleccionar…</option>{users.map((user) => <option key={user.id} value={idValue(user.id)}>{user.name || user.email} · {user.email}</option>)}</select></div>}
+          {isShared && <div><label className="label" htmlFor="responsible">Responsable</label><select id="responsible" className="field" required value={responsible} onChange={(e) => setResponsible(e.target.value)}><option value="" disabled>Seleccionar…</option>{users.map((user) => <option key={user.id} value={idValue(user.id)}>{user.name}</option>)}</select></div>}
           <div className="sm:col-span-2"><label className="label" htmlFor="description">Descripción <span className="normal-case tracking-normal text-black/30">(opcional)</span></label><input id="description" className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Añade una nota rápida" /></div>
         </div>
 
