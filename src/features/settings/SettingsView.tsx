@@ -77,9 +77,9 @@ export function SettingsView() {
               return <article key={operation.id} className={`rounded-2xl border p-4 ${operation.is_active ? 'border-black/[0.08]' : 'border-black/[0.04] opacity-60'}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-bold">{operation.description || operation.category_id}</p>
+                    <p className="font-bold">{operation.description || operation.category}</p>
                     <p className="mt-1 text-sm text-black/45">{frequency} · {source?.name ?? 'Cuenta'} · {operation.amount.toLocaleString('es-ES')} €</p>
-                    <p className="mt-1 text-xs text-black/35">{operation.is_active ? `Próxima: ${new Date(`${operation.next_run_date}T12:00:00`).toLocaleDateString('es-ES')}` : 'Pausada'}</p>
+                    <p className="mt-1 text-xs text-black/35">{operation.is_active ? `Próxima: ${new Date(`${operation.start_date}T12:00:00`).toLocaleDateString('es-ES')}` : 'Pausada'}</p>
                   </div>
                   <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${operation.is_active ? 'bg-sage text-moss' : 'bg-black/[0.06] text-black/45'}`}>{operation.is_active ? 'Activa' : 'Pausada'}</span>
                 </div>

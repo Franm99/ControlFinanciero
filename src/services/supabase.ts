@@ -43,7 +43,7 @@ export async function get_operations(filters: OperationFilters = {}): Promise<Op
   let query = client().from('operations').select('*').order('date', { ascending: false })
   if (filters.from) query = query.gte('date', filters.from)
   if (filters.to) query = query.lte('date', filters.to)
-  if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
+  if (filters.categoryId) query = query.eq('category', filters.categoryId)
   if (filters.sourceId) {
     query = query.or(`source_id.eq.${filters.sourceId},destination_source_id.eq.${filters.sourceId}`)
   }
@@ -62,8 +62,8 @@ export async function add_operation(operation: OperationDraft): Promise<Operatio
     p_destination_source_id: operation.destination_source_id
       ? integerId(operation.destination_source_id, 'La cuenta de destino')
       : null,
-    p_category_id: operation.category_id,
-    p_subcategory_id: operation.subcategory_id ?? null,
+    p_category_id: operation.category,
+    p_subcategory_id: operation.subcategory ?? null,
     p_date: operation.date.slice(0, 10),
     p_description: operation.description ?? null,
     p_created_by: operation.created_by,
@@ -123,7 +123,7 @@ export async function get_recurrent_operations(): Promise<RecurrentOperation[]> 
   const { data, error } = await client()
     .from('recurrent_operations')
     .select('*')
-    .order('next_run_date')
+    .order('start_date')
   if (error) throw error
   return data as RecurrentOperation[]
 }

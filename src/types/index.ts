@@ -42,8 +42,8 @@ export interface Operation {
   amount: number
   source_id: string
   destination_source_id?: string
-  category_id: string
-  subcategory_id?: string
+  category: string
+  subcategory?: string
   date: string
   creation_date: string
   description?: string
@@ -58,12 +58,11 @@ export interface RecurrentOperation {
   amount: number
   source_id: string
   destination_source_id?: string
-  category_id: string
-  subcategory_id?: string
+  category: string
+  subcategory?: string
   description: string
   frequency: RecurrentFrequency
-  day_of_month: number
-  next_run_date: string
+  start_date: string
   is_active: boolean
 }
 

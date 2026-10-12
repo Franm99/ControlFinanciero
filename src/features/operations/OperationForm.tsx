@@ -91,8 +91,8 @@ export function OperationForm() {
         amount: numericAmount,
         source_id: sourceId,
         destination_source_id: type === 'transfer' ? destinationId : undefined,
-        category_id: type === 'transfer' ? 'desconocido' : categoryId,
-        subcategory_id: type !== 'transfer' && subcategoryId ? subcategoryId : undefined,
+        category: type === 'transfer' ? 'desconocido' : categoryId,
+        subcategory: type !== 'transfer' && subcategoryId ? subcategoryId : undefined,
         date: new Date(`${date}T12:00:00`).toISOString(),
         description: description.trim() || undefined,
         created_by: (isShared ? responsible : userId) || responsible || '',
@@ -101,17 +101,17 @@ export function OperationForm() {
       let recurrentOperation: RecurrentOperationDraft | undefined
       if (isRecurring) {
         recurrentOperation = {
-        user_id: userId ?? '',
-        type: operation.type,
-        amount: operation.amount,
-        source_id: operation.source_id,
-        destination_source_id: operation.destination_source_id,
-        category_id: operation.category_id,
-        subcategory_id: operation.subcategory_id,
-        description: operation.description ?? '',
-        frequency,
+          user_id: userId ?? '',
+          type: operation.type,
+          amount: operation.amount,
+          source_id: operation.source_id,
+          destination_source_id: operation.destination_source_id,
+          category: operation.category,
+          subcategory: operation.subcategory,
+          description: operation.description ?? '',
+          frequency,
           start_date: new Date(`${date}T12:00:00`).toISOString(),
-        is_active: true,
+          is_active: true,
         }
       }
 
@@ -179,21 +179,13 @@ export function OperationForm() {
             </span>
           </label>
 
-          {isRecurring && <div className="mt-4 grid gap-4 border-t border-black/[0.06] pt-4 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor="frequency">Frecuencia</label>
-              <select id="frequency" className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurrentFrequency)}>
-                <option value="monthly">Mensual</option>
-                <option value="weekly">Semanal</option>
-                <option value="yearly">Anual</option>
-              </select>
-            </div>
-            <div>
-              <label className="label" htmlFor="day-of-month">Día del mes</label>
-              <select id="day-of-month" className="field" value={dayOfMonth} onChange={(event) => setDayOfMonth(Number(event.target.value))}>
-                {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day}</option>)}
-              </select>
-            </div>
+          {isRecurring && <div className="mt-4 border-t border-black/[0.06] pt-4">
+            <label className="label" htmlFor="frequency">Frecuencia</label>
+            <select id="frequency" className="field" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurrentFrequency)}>
+              <option value="monthly">Mensual</option>
+              <option value="weekly">Semanal</option>
+              <option value="yearly">Anual</option>
+            </select>
           </div>}
         </section>
 
