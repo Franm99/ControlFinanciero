@@ -13,6 +13,8 @@ import type {
 import {
   add_operation as persistOperation,
   add_recurrent_operation as persistRecurrentOperation,
+  combine_operations as persistCombinedOperation,
+  delete_operation as removeOperation,
   delete_recurrent_operation as removeRecurrentOperation,
   get_operations,
   get_recurrent_operations,
@@ -23,6 +25,7 @@ import {
   save_user_settings,
   supabase,
   toggle_recurrent_operation as persistRecurrentStatus,
+  update_operation as persistOperationUpdate,
 } from '../../services/supabase'
 
 const DEMO_USERS: AppUser[] = [
@@ -51,6 +54,9 @@ type AppContextValue = {
   navigate: (view: AppView) => void
   startOperation: (type: OperationType) => void
   submitOperation: (draft: OperationDraft, recurrentDraft?: RecurrentOperationDraft) => Promise<void>
+  updateOperation: (id: string, changes: Pick<OperationDraft, 'amount' | 'date' | 'category' | 'subcategory' | 'description'>) => Promise<void>
+  deleteOperation: (id: string) => Promise<void>
+  combineOperations: (ids: string[]) => Promise<void>
   toggleRecurrentOperation: (id: string, isActive: boolean) => Promise<void>
   deleteRecurrentOperation: (id: string) => Promise<void>
   updateDefaultSource: (sourceId: string) => Promise<void>
@@ -60,7 +66,12 @@ type AppContextValue = {
 
 export const AppContext = createContext<AppContextValue | null>(null)
 
-function applyBalance(sources: Source[], operation: OperationDraft): Source[] {
+function operationDraft(operation: Operation): OperationDraft {
+  const { id: _id, creation_date: _creationDate, ...draft } = operation
+  return draft
+}
+
+function applyBalance(sources: Source[], operation: OperationDraft, direction = 1): Source[] {
   const sourceId = String(operation.source_id)
   const destinationSourceId = operation.destination_source_id == null
     ? null
@@ -70,10 +81,10 @@ function applyBalance(sources: Source[], operation: OperationDraft): Source[] {
     const currentSourceId = String(source.id)
     if (currentSourceId === sourceId) {
       const delta = operation.type === 'income' ? operation.amount : -operation.amount
-      return { ...source, balance: source.balance + delta }
+      return { ...source, balance: source.balance + (delta * direction) }
     }
     if (operation.type === 'transfer' && currentSourceId === destinationSourceId) {
-      return { ...source, balance: source.balance + operation.amount }
+      return { ...source, balance: source.balance + (operation.amount * direction) }
     }
     return source
   })
@@ -178,6 +189,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setView('dashboard')
   }
 
+  const assertOwnedOperation = (operation: Operation | undefined) => {
+    if (!operation) throw new Error('No se encontró la operación.')
+    if (String(operation.created_by) !== String(userId)) {
+      throw new Error('Solo puedes modificar tus propias operaciones.')
+    }
+    return operation
+  }
+
+  const updateOperation = async (
+    id: string,
+    changes: Pick<OperationDraft, 'amount' | 'date' | 'category' | 'subcategory' | 'description'>,
+  ) => {
+    const current = assertOwnedOperation(operations.find((operation) => String(operation.id) === String(id)))
+    const nextDraft = { ...operationDraft(current), ...changes }
+    const updated = isSupabaseConfigured
+      ? await persistOperationUpdate(id, changes)
+      : { ...current, ...changes }
+
+    setOperations((items) => items.map((item) => String(item.id) === String(id) ? updated : item))
+    setSources((items) => applyBalance(applyBalance(items, operationDraft(current), -1), nextDraft))
+  }
+
+  const deleteOperation = async (id: string) => {
+    const current = assertOwnedOperation(operations.find((operation) => String(operation.id) === String(id)))
+    if (isSupabaseConfigured) await removeOperation(id)
+    setOperations((items) => items.filter((item) => String(item.id) !== String(id)))
+    setSources((items) => applyBalance(items, operationDraft(current), -1))
+  }
+
+  const combineOperations = async (ids: string[]) => {
+    const selected = ids.map((id) => assertOwnedOperation(
+      operations.find((operation) => String(operation.id) === String(id)),
+    ))
+    if (selected.length < 2) throw new Error('Selecciona al menos dos operaciones.')
+    const first = selected[0]
+    const compatible = selected.every((operation) => (
+      operation.type !== 'transfer'
+      && String(operation.source_id) === String(first.source_id)
+    ))
+    if (first.type === 'transfer' || !compatible) {
+      throw new Error('Las operaciones deben compartir cuenta y no pueden ser transferencias.')
+    }
+
+    const signedAmount = selected.reduce((sum, operation) => (
+      sum + (operation.type === 'income' ? operation.amount : -operation.amount)
+    ), 0)
+    const isZeroResult = Math.abs(signedAmount) < 0.005
+    const resultType = signedAmount > 0 ? 'income' : 'expense'
+    const dominantOperation = isZeroResult
+      ? null
+      : selected
+        .filter((operation) => operation.type === resultType)
+        .reduce((largest, operation) => operation.amount > largest.amount ? operation : largest)
+    const descriptions = new Set(selected.map((operation) => operation.description?.trim() ?? ''))
+    const draft: OperationDraft | null = dominantOperation ? {
+      type: resultType,
+      amount: Math.abs(signedAmount),
+      source_id: first.source_id,
+      category: dominantOperation.category,
+      subcategory: dominantOperation.subcategory,
+      date: selected.reduce((oldest, operation) => operation.date < oldest ? operation.date : oldest, first.date),
+      description: descriptions.size === 1 ? first.description : undefined,
+      created_by: userId ?? '',
+    } : null
+    const combined = isSupabaseConfigured
+      ? await persistCombinedOperation(ids, draft)
+      : draft ? { ...draft, id: crypto.randomUUID(), creation_date: new Date().toISOString() } : null
+    const selectedIds = new Set(ids.map(String))
+    setOperations((items) => [
+      ...(combined ? [combined] : []),
+      ...items.filter((item) => !selectedIds.has(String(item.id))),
+    ])
+    setSources((items) => {
+      const reverted = selected.reduce(
+        (currentSources, operation) => applyBalance(currentSources, operationDraft(operation), -1),
+        items,
+      )
+      return draft ? applyBalance(reverted, draft) : reverted
+    })
+  }
+
   const toggleRecurrentOperation = async (id: string, isActive: boolean) => {
     if (isSupabaseConfigured) await persistRecurrentStatus(id, isActive)
     setRecurrentOperations((current) => current.map((item) => (
@@ -200,8 +292,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     view, selectedType, sources, operations, recurrentOperations, settings, users, userId, userEmail, userName, authLoading,
-    navigate: setView, startOperation, submitOperation, toggleRecurrentOperation,
-    deleteRecurrentOperation, updateDefaultSource, login, logout,
+    navigate: setView, startOperation, submitOperation, updateOperation, deleteOperation, combineOperations,
+    toggleRecurrentOperation, deleteRecurrentOperation, updateDefaultSource, login, logout,
   }), [view, selectedType, sources, operations, recurrentOperations, settings, users, userId, userEmail, userName, authLoading])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

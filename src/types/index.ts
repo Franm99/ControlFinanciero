@@ -82,4 +82,4 @@ export interface OperationFilters {
   categoryId?: string
 }
 
-export type AppView = 'selector' | 'form' | 'dashboard' | 'settings'
+export type AppView = 'selector' | 'form' | 'dashboard' | 'operations' | 'settings'

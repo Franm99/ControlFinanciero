@@ -3,6 +3,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { LoginView } from './features/auth/LoginView'
 import { OperationForm } from './features/operations/OperationForm'
 import { OperationSelector } from './features/operations/OperationSelector'
+import { OperationsView } from './features/operations/OperationsView'
 import { SettingsView } from './features/settings/SettingsView'
 import { useApp } from './hooks/useApp'
 
@@ -14,6 +15,7 @@ export default function App() {
 
   if (view === 'form') return <OperationForm />
   if (view === 'dashboard') return <Dashboard />
+  if (view === 'operations') return <OperationsView />
   if (view === 'settings') return <SettingsView />
   return <OperationSelector />
 }

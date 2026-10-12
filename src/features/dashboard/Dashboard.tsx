@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Plus, Settings, WalletCards } from 'lucide-react'
+import { BarChart3, List, Plus, Settings, WalletCards } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CATEGORIES } from '../../data/categories'
 import { useApp } from '../../hooks/useApp'
@@ -81,7 +81,7 @@ export function Dashboard() {
   return (
     <main className="safe-top min-h-screen bg-paper px-5 pb-32">
       <div className="mx-auto max-w-4xl">
-        <header className="flex items-center justify-between pb-7 pt-2"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-moss">Panel general</p><h1 className="font-display text-3xl font-extrabold">Vuestra casa</h1></div><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sage text-moss"><BarChart3 size={22} /></div></header>
+        <header className="flex items-center justify-between gap-3 pb-7 pt-2"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-moss">Panel general</p><h1 className="font-display text-3xl font-extrabold">Vuestra casa</h1></div><button type="button" onClick={() => navigate('operations')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-sage px-3 font-bold text-moss" aria-label="Ver operaciones"><List size={21} /><span className="hidden sm:inline">Operaciones</span></button></header>
 
         <section className="card grid grid-cols-2 divide-x divide-black/[0.06] overflow-hidden">
           {balanceSections.map(({ title, total, sources: sectionSources, pieData }) => (

@@ -97,14 +97,14 @@ export async function delete_operation(id: string): Promise<void> {
 
 export async function combine_operations(
   operationIds: string[],
-  newOperationData: OperationDraft,
-): Promise<Operation> {
+  newOperationData: OperationDraft | null,
+): Promise<Operation | null> {
   const { data, error } = await client().rpc('combine_operations', {
     operation_ids: operationIds,
     new_operation_data: newOperationData,
   })
   if (error) throw error
-  return data as Operation
+  return data as Operation | null
 }
 
 export async function add_recurrent_operation(
